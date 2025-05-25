@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ماتریس پلکانی</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Vazir&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e3a8a, #6b21a8, #be123c);
+            min-height: 100vh;
+            font-family: 'Vazir', sans-serif;
+            overflow-x: hidden;
+            color: white;
+        }
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            opacity: 0.4;
+        }
+        .container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 1.5rem;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        input {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+        button {
+            background: linear-gradient(90deg, #10b981, #06d6a0);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.5);
+        }
+        .matrix-grid {
+            display: grid;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            direction: ltr;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem;
+            border-radius: 0.75rem;
+        }
+        .matrix-cell {
+            font-family: 'Roboto Mono', monospace;
+        }
+        .step {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1.5rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 0.5s forwards;
+        }
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        h1, h2, h3 {
+            font-family: 'Roboto Mono', monospace;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        .math-symbol {
+            position: absolute;
+            font-size: 2rem;
+            opacity: 0.2;
+            color: #a5b4fc;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="mathCanvas" class="math-bg"></canvas>
+    <div class="container">
+        <h1 class="text-4xl font-bold text-center mb-8">امیرحسین قربانی</h1>
+        
+        <!-- فرم ورودی ابعاد ماتریس -->
+        <div class="mb-8">
+            <h2 class="text-2xl mb-4">ابعاد ماتریس رو وارد کن</h2>
+            <div class="flex gap-6 justify-center flex-wrap">
+                <div>
+                    <label for="rows" class="block text-sm mb-1">تعداد سطرها:</label>
+                    <input type="number" id="rows" min="1" value="3" class="w-24">
+                </div>
+                <div>
+                    <label for="cols" class="block text-sm mb-1">تعداد ستون‌ها:</label>
+                    <input type="number" id="cols" min="1" value="3" class="w-24">
+                </div>
+                <button onclick="generateMatrix()" class="mt-2">ساخت ماتریس</button>
+            </div>
+        </div>
+
+        <!-- نمایش فرم ماتریس -->
+        <div id="matrixInput" class="hidden">
+            <h2 class="text-2xl mb-4">درایه‌های ماتریس رو وارد کن</h2>
+            <div id="matrixGrid" class="matrix-grid"></div>
+            <button onclick="submitMatrix()" class="mt-6">محاسبه فرم پلکانی</button>
+        </div>
+
+        <!-- نمایش مراحل و نتیجه -->
+        <div id="steps" class="mt-8 hidden"></div>
+        <div id="result" class="mt-8 hidden">
+            <h2 class="text-2xl mb-4">ماتریس پلکانی نهایی</h2>
+            <div id="finalMatrix" class="matrix-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        // انیمیشن پس‌زمینه ریاضی پیشرفته
+        const canvas = document.getElementById('mathCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let time = 0;
+        function drawMathBackground() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += 50) {
+                for (let y = 0; y < canvas.height; y += 50) {
+                    const offset = Math.sin(x * 0.02 + time) * 10 + Math.cos(y * 0.02 + time) * 10;
+                    ctx.beginPath();
+                    ctx.arc(x + offset, y, 5, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.font = '16px Roboto Mono';
+                    ctx.fillStyle = 'rgba(165, 180, 252, 0.3)';
+                    ctx.fillText('∑', x + offset + 10, y + 5);
+                    ctx.fillText('∫', x + offset - 10, y - 5);
+                }
+            }
+            time += 0.03;
+            requestAnimationFrame(drawMathBackground);
+        }
+        drawMathBackground();
+
+        // اضافه کردن نمادهای ریاضی شناور
+        function addMathSymbols() {
+            const symbols = ['∑', '∫', 'π', '∞', '√', '∆'];
+            for (let i = 0; i < 10; i++) {
+                const symbol = document.createElement('div');
+                symbol.className = 'math-symbol';
+                symbol.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                symbol.style.left = Math.random() * 100 + 'vw';
+                symbol.style.top = Math.random() * 100 + 'vh';
+                symbol.style.animation = `float ${5 + Math.random() * 5}s infinite`;
+                document.body.appendChild(symbol);
+            }
+        }
+        addMathSymbols();
+
+        // انیمیشن شناور برای نمادها
+        const styleSheet = document.createElement('style');
+        styleSheet.textContent = `
+            @keyframes float {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-20px); }
+            }
+        `;
+        document.head.appendChild(styleSheet);
+
+        // تولید فرم ماتریس
+        function generateMatrix() {
+            const rows = parseInt(document.getElementById('rows').value);
+            const cols = parseInt(document.getElementById('cols').value);
+            if (rows < 1 || cols < 1) {
+                alert('ابعاد ماتریس باید مثبت باشد!');
+                return;
+            }
+            const matrixGrid = document.getElementById('matrixGrid');
+            matrixGrid.innerHTML = '';
+            matrixGrid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.className = 'matrix-cell';
+                    input.placeholder = `a${i + 1}${j + 1}`;
+                    matrixGrid.appendChild(input);
+                }
+            }
+            document.getElementById('matrixInput').classList.remove('hidden');
+        }
+
+        // ارسال ماتریس به سرور
+        async function submitMatrix() {
+            const rows = parseInt(document.getElementById('rows').value);
+            const cols = parseInt(document.getElementById('cols').value);
+            const cells = document.getElementsByClassName('matrix-cell');
+            const matrix = [];
+            let index = 0;
+            for (let i = 0; i < rows; i++) {
+                const row = [];
+                for (let j = 0; j < cols; j++) {
+                    row.push(parseFloat(cells[index].value) || 0);
+                    index++;
+                }
+                matrix.push(row);
+            }
+
+            const response = await fetch('/row_reduction', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ matrix, rows, cols })
+            });
+            const data = await response.json();
+
+            // نمایش مراحل
+            const stepsDiv = document.getElementById('steps');
+            stepsDiv.innerHTML = '';
+            data.steps.forEach((step, index) => {
+                const stepDiv = document.createElement('div');
+                stepDiv.className = 'step';
+                stepDiv.style.animationDelay = `${index * 0.2}s`;
+                stepDiv.innerHTML = `<h3 class="text-lg">مرحله ${index + 1}: ${step.operation}</h3>`;
+                const grid = document.createElement('div');
+                grid.className = 'matrix-grid';
+                grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+                step.matrix.forEach(row => {
+                    row.forEach(val => {
+                        const cell = document.createElement('div');
+                        cell.className = 'text-center font-mono';
+                        cell.textContent = val.toFixed(2);
+                        grid.appendChild(cell);
+                    });
+                });
+                stepDiv.appendChild(grid);
+                stepsDiv.appendChild(stepDiv);
+            });
+            stepsDiv.classList.remove('hidden');
+
+            // نمایش ماتریس نهایی
+            const finalMatrixDiv = document.getElementById('finalMatrix');
+            finalMatrixDiv.innerHTML = '';
+            finalMatrixDiv.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+            data.result.forEach(row => {
+                row.forEach(val => {
+                    const cell = document.createElement('div');
+                    cell.className = 'text-center font-mono';
+                    cell.textContent = val.toFixed(2);
+                    finalMatrixDiv.appendChild(cell);
+                });
+            });
+            document.getElementById('result').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
